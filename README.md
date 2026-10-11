@@ -24,36 +24,77 @@ A classic 3-reel slot machine built in **Unity 6 (6000.6.5f1)** with a WebGL bui
 
 ---
 
-## 🚀 Quick Start (Open & Play)
+## 🧪 How to Test & Run the Project
 
-### Prerequisites
-- **Unity Hub** installed
-- **Unity 6000.6.5f1** (or any 6000.6.x) with **WebGL Build Support** module
+Evaluators can test the project using either of the two methods below:
 
-### Steps
-```
-1. Open Unity Hub → Add project → select the SlotGame/ folder
-2. Open the project (first import takes ~2 minutes)
-3. Menu: Slot Game ▸ Build Scene  (Ctrl+Shift+B)
-   → Generates sounds, configures sprites, builds the entire scene
-4. Press ▶ Play to test in the editor
-```
+### ⚡ Method 1: Instant Browser Play via WebGL (Recommended — No Unity Install Needed)
 
-### WebGL Build
-```
-Menu: Slot Game ▸ Build WebGL
-→ Output lands in Build/WebGL/
-→ Open Build/WebGL/index.html in a browser to play
-```
+A complete, fully functional WebGL production build is pre-compiled and included directly in `Build/WebGL/`.
 
-Or from the command line:
-```powershell
-& "C:\Program Files\Unity\Hub\Editor\6000.6.5f1\Editor\Unity.exe" `
-    -batchmode -nographics -quit `
-    -projectPath "C:\project-unity\SlotGame" `
-    -executeMethod SlotGame.EditorTools.BuildScript.BuildWebGL `
-    -logFile build.log
-```
+1. Open a terminal in the root `SlotGame` folder and start a local HTTP server:
+   ```bash
+   python -m http.server 8080 --directory Build/WebGL
+   ```
+   *(Or using Node.js: `npx serve Build/WebGL`)*
+
+2. Open your browser and navigate to:
+   ```
+   http://localhost:8080
+   ```
+3. Play the game immediately in your browser!
+
+---
+
+### 🎮 Method 2: Open in Unity Editor (Full Code & Scene Inspection)
+
+#### Prerequisites
+- **Unity Hub**
+- **Unity 6 (6000.6.5f1)** (or any compatible Unity 6000.6.x)
+
+#### Step-by-Step Instructions:
+1. Open **Unity Hub**.
+2. Go to the **Projects** tab on the left.
+3. Click the **Add** button *(or dropdown arrow ➔ **Add project from disk**)*.
+4. Browse to and select the root **`SlotGame`** directory:
+   > ⚠️ **Important:** Select the root `SlotGame` folder itself. Do **not** browse inside `Assets` or `Scenes` when adding to Unity Hub.
+5. Click **Add Project**.
+6. Click on **SlotGame** in your project list to open it in Unity Editor.
+7. In Unity's Project tab (bottom window), open:
+   ```
+   Assets ➔ Scenes ➔ SlotMachine.unity
+   ```
+8. Press the **▶ Play** button at the top of the Unity Editor.
+
+---
+
+### 📋 Evaluator Checklist (What to Test)
+
+| Feature | How to Test | Expected Result |
+| :--- | :--- | :--- |
+| **Reel Animation** | Click **SPIN** or pull the **Lever** | 4-phase animation: smooth acceleration, cruise, deceleration, and elastic bounce on landing. |
+| **Middle Payline Win** | Spin reels until identical symbols align | Winning combination highlighted; payout awarded based on pay table. |
+| **Bet Controls** | Click **◀** or **▶** on Bet box | Cycles bet between 10, 50, and 100 credits; updates HUD. |
+| **Lever Interaction** | Click the red lever knob on the right | Plays lever pull sound, switches lever sprite, and triggers reel spin. |
+| **Wallet & Refill** | Spin until credits reach 0 | Refill dialog pops up with smooth pop-in animation asking to refill credits. |
+| **Procedural Audio** | Play with audio unmuted | Distinct synthesized sound effects for spin hum, reel stop, win, jackpot, lever, and UI clicks. |
+| **Bonus Mechanics** | Win any spin | ~12% chance of triggering an automatic **Free Spin** bonus. |
+
+---
+
+### 🔨 Building the Project (Optional)
+
+To regenerate the scene or build WebGL from scratch:
+* **Rebuild Scene:** Menu `Slot Game ▸ Build Scene` (`Ctrl+Shift+B`)
+* **Build WebGL:** Menu `Slot Game ▸ Build WebGL`
+* **CLI Build:**
+  ```powershell
+  & "C:\Program Files\Unity\Hub\Editor\6000.6.5f1\Editor\Unity.exe" `
+      -batchmode -nographics -quit `
+      -projectPath "." `
+      -executeMethod SlotGame.EditorTools.BuildScript.BuildWebGL `
+      -logFile build.log
+  ```
 
 ---
 
