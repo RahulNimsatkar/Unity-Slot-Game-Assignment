@@ -40,14 +40,16 @@ namespace SlotGame.EditorTools
     /// </summary>
     public static class SceneBuilder
     {
-        // Reference resolution (portrait mobile / WebGL).
-        private const float RefW = 1080f;
-        private const float RefH = 1920f;
+        // Reference resolution (landscape desktop/WebGL).
+        private const float RefW = 1920f;
+        private const float RefH = 1080f;
 
-        // Reel window geometry (measured from the Machine_Body / Glass_Overlay).
-        // Three reel columns, each showing 3 symbols through a masked window.
-        private static readonly float[] ReelX = { 282f, 412f, 542f }; // center X per reel
-        private const float ReelCenterY = 350f;  // center Y of the reel window
+        // Reel window geometry (relative to the 816x624 Machine_Body image center).
+        // The machine art is 816x624. Center is at (408, 312).
+        // Original measurements from top-left: X={282, 412, 542}, Y=350.
+        // Convert to center-relative:
+        private static readonly float[] ReelX = { -126f, 4f, 134f }; // center X per reel
+        private const float ReelCenterY = -38f;  // center Y of the reel window
         private const float ReelWindowW = 108f;  // width of each reel window
         private const float ReelWindowH = 210f;  // height of the visible area
         private const float SymbolSize  = 64f;   // symbol sprite display size
@@ -55,13 +57,12 @@ namespace SlotGame.EditorTools
         private const int   SymbolsPerReel = 5;   // enough to fill the window + recycling buffer
 
         // HUD positions (relative to canvas center).
-        private const float HudY = -140f;
-        private const float MsgY = 180f;
-        private const float WinTextY = 140f;
+        private const float HudY = 400f;
+        private const float MsgY = 470f;
+        private const float WinTextY = 320f;
 
-        // Lever position (right of the machine).
-        private const float LeverX = 680f;
-        private const float LeverY = 350f;
+        // Machine position (relative to canvas center).
+        private const float MachineY = -30f;
 
         [MenuItem("Slot Game/Build Scene %#b")]
         public static void Build()
@@ -109,21 +110,34 @@ namespace SlotGame.EditorTools
             CreateImage("Background", canvasGo, LoadSprite(AssetPaths.Background),
                 Vector2.zero, new Vector2(RefW, RefH), true);
 
-            // ──────────────────────────────────────────── Machine body
+            // ──────────────────────────────────────────── Machine Container
             var machineSprite = LoadSprite(AssetPaths.MachineBody);
-            float machineH = machineSprite != null ? machineSprite.rect.height : 800f;
-            float machineW = machineSprite != null ? machineSprite.rect.width : 600f;
-            CreateImage("Machine_Body", canvasGo, machineSprite,
-                new Vector2(RefW * 0.5f - RefW * 0.5f, ReelCenterY - RefH * 0.5f + 100f),
-                new Vector2(machineW, machineH), false);
+            float machineH = machineSprite != null ? machineSprite.rect.height : 624f;
+            float machineW = machineSprite != null ? machineSprite.rect.width : 816f;
+
+            var machineContainer = CreateUI("Machine_Container", canvasGo);
+            var machineRect = machineContainer.GetComponent<RectTransform>();
+            SetAnchors(machineRect, 0.5f, 0.5f, 0.5f, 0.5f);
+            machineRect.anchoredPosition = new Vector2(0f, MachineY);
+            machineRect.sizeDelta = new Vector2(machineW, machineH);
+
+            CreateImage("Machine_Body", machineContainer, machineSprite,
+                Vector2.zero, new Vector2(machineW, machineH), false);
 
             // ──────────────────────────────────────────── Marquee
             var marqueeSprite = LoadSprite(AssetPaths.Marquee);
             if (marqueeSprite != null)
             {
-                CreateImage("Marquee", canvasGo, marqueeSprite,
-                    new Vector2(0f, ReelCenterY - RefH * 0.5f + machineH * 0.5f + 60f),
-                    new Vector2(marqueeSprite.rect.width, marqueeSprite.rect.height), false);
+                CreateImage("Marquee", machineContainer, marqueeSprite,
+                    Vector2.zero, new Vector2(machineW, machineH), false);
+            }
+
+            // ──────────────────────────────────────────── Glass overlay
+            var glassSprite = LoadSprite(AssetPaths.GlassOverlay);
+            if (glassSprite != null)
+            {
+                CreateImage("Glass_Overlay", machineContainer, glassSprite,
+                    Vector2.zero, new Vector2(machineW, machineH), false);
             }
 
             // ──────────────────────────────────────────── Reels
@@ -131,11 +145,10 @@ namespace SlotGame.EditorTools
             for (int r = 0; r < 3; r++)
             {
                 // Mask container — clips the reel strip to the window.
-                var reelGo = CreateUI("Reel_" + r, canvasGo);
+                var reelGo = CreateUI("Reel_" + r, machineContainer);
                 var reelRect = reelGo.GetComponent<RectTransform>();
                 SetAnchors(reelRect, 0.5f, 0.5f, 0.5f, 0.5f);
-                reelRect.anchoredPosition = new Vector2(ReelX[r] - RefW * 0.5f,
-                    ReelCenterY - RefH * 0.5f);
+                reelRect.anchoredPosition = new Vector2(ReelX[r], ReelCenterY);
                 reelRect.sizeDelta = new Vector2(ReelWindowW, ReelWindowH);
 
                 var mask = reelGo.AddComponent<RectMask2D>();
@@ -179,44 +192,36 @@ namespace SlotGame.EditorTools
                 reelComponents[r] = reel;
             }
 
-            // ──────────────────────────────────────────── Glass overlay (on top of reels)
-            var glassSprite = LoadSprite(AssetPaths.GlassOverlay);
-            if (glassSprite != null)
-            {
-                CreateImage("Glass_Overlay", canvasGo, glassSprite,
-                    new Vector2(0f, ReelCenterY - RefH * 0.5f),
-                    new Vector2(glassSprite.rect.width, glassSprite.rect.height), false);
-            }
 
             // ──────────────────────────────────────────── Lever
-            var leverGo = CreateUI("Lever", canvasGo);
+            var leverGo = CreateUI("Lever", machineContainer);
             var leverRect = leverGo.GetComponent<RectTransform>();
             SetAnchors(leverRect, 0.5f, 0.5f, 0.5f, 0.5f);
-            leverRect.anchoredPosition = new Vector2(LeverX - RefW * 0.5f, LeverY - RefH * 0.5f);
-
-            var leverUpSprite = LoadSprite(AssetPaths.LeverUp);
-            var leverDownSprite = LoadSprite(AssetPaths.LeverDown);
-            float leverH = leverUpSprite != null ? leverUpSprite.rect.height : 200f;
-            float leverW = leverUpSprite != null ? leverUpSprite.rect.width : 60f;
-            leverRect.sizeDelta = new Vector2(leverW, leverH);
+            leverRect.anchoredPosition = Vector2.zero; // same size/pos as machine art
+            leverRect.sizeDelta = new Vector2(machineW, machineH);
 
             // Lever Up image (visible at rest).
-            var leverUpGo = CreateImage("Lever_Up", leverGo, leverUpSprite,
-                Vector2.zero, new Vector2(leverW, leverH), false);
+            var leverUpGo = CreateImage("Lever_Up", leverGo, LoadSprite(AssetPaths.LeverUp),
+                Vector2.zero, new Vector2(machineW, machineH), false);
 
             // Lever Down image (visible when pulled).
-            var leverDownGo = CreateImage("Lever_Down", leverGo, leverDownSprite,
-                Vector2.zero, new Vector2(leverW, leverH), false);
+            var leverDownGo = CreateImage("Lever_Down", leverGo, LoadSprite(AssetPaths.LeverDown),
+                Vector2.zero, new Vector2(machineW, machineH), false);
             leverDownGo.SetActive(false);
 
-            // Transparent raycast target covering the lever area for click detection.
-            var leverClickImg = leverGo.AddComponent<Image>();
+            // Transparent raycast target covering just the lever area on the right
+            var leverClickGo = CreateUI("Lever_Hitbox", leverGo);
+            var leverClickRect = leverClickGo.GetComponent<RectTransform>();
+            SetAnchors(leverClickRect, 0.5f, 0.5f, 0.5f, 0.5f);
+            leverClickRect.anchoredPosition = new Vector2(300f, 0f);
+            leverClickRect.sizeDelta = new Vector2(200f, 600f);
+            var leverClickImg = leverClickGo.AddComponent<Image>();
             leverClickImg.color = new Color(0, 0, 0, 0); // fully transparent
             leverClickImg.raycastTarget = true;
 
             // ──────────────────────────────────────────── HUD
-            float hudLeft = -320f;
-            float hudSpacing = 210f;
+            float hudLeft = -250f;
+            float hudSpacing = 250f;
 
             // Credits display
             var creditsLabel = CreateText("Credits_Label", canvasGo,
@@ -226,15 +231,15 @@ namespace SlotGame.EditorTools
 
             // Bet display
             var betLabel = CreateText("Bet_Label", canvasGo,
-                new Vector2(hudLeft + hudSpacing, HudY), "BET", 28, TextAnchor.MiddleCenter, Color.yellow);
+                new Vector2(0f, HudY), "BET", 28, TextAnchor.MiddleCenter, Color.yellow);
             var betValue = CreateText("Bet_Value", canvasGo,
-                new Vector2(hudLeft + hudSpacing, HudY - 40f), "10", 36, TextAnchor.MiddleCenter, Color.white);
+                new Vector2(0f, HudY - 40f), "10", 36, TextAnchor.MiddleCenter, Color.white);
 
             // Win display
             var winLabel = CreateText("Win_Label", canvasGo,
-                new Vector2(hudLeft + hudSpacing * 2f, HudY), "WIN", 28, TextAnchor.MiddleCenter, Color.yellow);
+                new Vector2(hudSpacing, HudY), "WIN", 28, TextAnchor.MiddleCenter, Color.yellow);
             var winValue = CreateText("Win_Value", canvasGo,
-                new Vector2(hudLeft + hudSpacing * 2f, HudY - 40f), "0", 36, TextAnchor.MiddleCenter, Color.white);
+                new Vector2(hudSpacing, HudY - 40f), "0", 36, TextAnchor.MiddleCenter, Color.white);
 
             // Message banner
             var messageText = CreateText("Message", canvasGo,
@@ -248,31 +253,31 @@ namespace SlotGame.EditorTools
             var winPulseAnim = winText.AddComponent<Animation>();
 
             // ──────────────────────────────────────────── Buttons
-            float btnY = HudY - 120f;
+            float btnY = -420f; // below the machine
             float btnSize = 80f;
 
             // Bet Down (left arrow)
             var betDownBtn = CreateButton("BetDown_Btn", canvasGo,
-                new Vector2(hudLeft + hudSpacing - 80f, btnY),
+                new Vector2(-120f, btnY),
                 new Vector2(btnSize, btnSize),
                 LoadSubSprite(AssetPaths.ButtonLeftSheet, "Left_Normal"),
                 LoadSubSprite(AssetPaths.ButtonLeftSheet, "Left_Highlighted"),
                 LoadSubSprite(AssetPaths.ButtonLeftSheet, "Left_Pressed"),
                 LoadSubSprite(AssetPaths.ButtonLeftSheet, "Left_Disabled"));
 
+            // Spin button (uses the close sheet visual as a big round button; label "SPIN")
+            var spinBtnGo = CreateButton("Spin_Btn", canvasGo,
+                new Vector2(0f, btnY),
+                new Vector2(160f, 60f), null, null, null, null);
+                
             // Bet Up (right arrow)
             var betUpBtn = CreateButton("BetUp_Btn", canvasGo,
-                new Vector2(hudLeft + hudSpacing + 80f, btnY),
+                new Vector2(120f, btnY),
                 new Vector2(btnSize, btnSize),
                 LoadSubSprite(AssetPaths.ButtonRightSheet, "Right_Normal"),
                 LoadSubSprite(AssetPaths.ButtonRightSheet, "Right_Highlighted"),
                 LoadSubSprite(AssetPaths.ButtonRightSheet, "Right_Pressed"),
                 LoadSubSprite(AssetPaths.ButtonRightSheet, "Right_Disabled"));
-
-            // Spin button (uses the close sheet visual as a big round button; label "SPIN")
-            var spinBtnGo = CreateButton("Spin_Btn", canvasGo,
-                new Vector2(0f, btnY - 80f),
-                new Vector2(160f, 60f), null, null, null, null);
             var spinLabel = CreateText("Spin_Label", spinBtnGo,
                 Vector2.zero, "SPIN", 34, TextAnchor.MiddleCenter, Color.white);
             // Give the spin button a solid look.
